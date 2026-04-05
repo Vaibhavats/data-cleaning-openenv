@@ -103,23 +103,27 @@ def _task_info(task_id: str) -> TaskInfo:
 def health():
     return {"status": "ok", "environment": "customer-data-cleaning", "version": "1.0.0"}
 
-from fastapi import Body
+
 from fastapi import Request
+from fastapi.responses import JSONResponse
 
 @app.post("/reset")
-async def reset(request: Request):
+async def reset(request: Request = None):
     task_id = "task1_missing_values"
 
-    if request.headers.get("content-length") not in (None, "0"):
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                task_id = body.get("task_id", task_id)
-        except:
-            pass
+    try:
+        if request:
+            raw = await request.body()
+            if raw:
+                body = json.loads(raw)
+                if isinstance(body, dict):
+                    task_id = body.get("task_id", task_id)
+    except:
+        pass
 
     obs = _env.reset(task_id=task_id)
-    return obs.model_dump()
+    return JSONResponse(content=obs.model_dump())
+
 
 @app.post("/step")
 def step(action: Action):
