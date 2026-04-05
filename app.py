@@ -107,16 +107,19 @@ def health():
     return {"status": "ok", "environment": "customer-data-cleaning", "version": "1.0.0"}
 
 from fastapi import Body
-
 from fastapi import Request
 
 @app.post("/reset")
 async def reset(request: Request):
-    try:
-        body = await request.json()
-        task_id = body.get("task_id", "task1_missing_values")
-    except:
-        task_id = "task1_missing_values"
+    task_id = "task1_missing_values"
+
+    if request.headers.get("content-length") not in (None, "0"):
+        try:
+            body = await request.json()
+            if isinstance(body, dict):
+                task_id = body.get("task_id", task_id)
+        except:
+            pass
 
     obs = _env.reset(task_id=task_id)
     return obs.model_dump()
