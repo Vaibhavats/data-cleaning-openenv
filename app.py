@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from env import DataCleaningEnvironment, Action
+import env
 from env.models import (
     GraderRequest, GraderResponse,
     TaskInfo, TaskListResponse,
@@ -31,6 +32,7 @@ from env.tasks import TASK_REGISTRY
 
 # ── App setup ────────────────────────────────────────────────────────────────
 
+
 app = FastAPI(
     title="Customer Data Cleaning — OpenEnv",
     version="1.0.0",
@@ -40,6 +42,7 @@ app = FastAPI(
         "3 graded tasks (easy→medium→hard)."
     ),
 )
+
 
 @app.get("/")
 def home():
@@ -103,17 +106,34 @@ def _task_info(task_id: str) -> TaskInfo:
 def health():
     return {"status": "ok", "environment": "customer-data-cleaning", "version": "1.0.0"}
 
+from fastapi import Body
 
 @app.post("/reset")
-def reset(req: ResetRequest):
-    """Reset the environment and return the initial observation."""
+def reset(req: Optional[ResetRequest] = Body(default=None)):
     try:
-        obs = _env.reset(task_id=req.task_id)
+        task_id = req.task_id if req else "task1_missing_values"
+        obs = _env.reset(task_id=task_id)
         return obs.model_dump()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/reset")
+# def reset(req: Optional[ResetRequest] = None):
+#     if req is None or req.task_id is None:
+#         task_id = "task1_missing_values"
+#     else:
+#         task_id = req.task_id
+
+#     return env.reset(task_id)
+# @app.post("/reset")
+# def reset(req: ResetRequest):
+#     """Reset the environment and return the initial observation."""
+#     try:
+#         obs = _env.reset(task_id=req.task_id)
+#         return obs.model_dump()
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=traceback.format_exc())
 
 
 @app.post("/step")
