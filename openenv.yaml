@@ -1,0 +1,84 @@
+name: customer-data-cleaning
+version: "1.0.0"
+description: >
+  A real-world environment where AI agents clean messy customer datasets.
+  Tasks include fixing missing values, removing outliers, correcting data types,
+  deduplicating records, and standardizing formats — exactly as a data engineer would.
+author: openenv-submission
+tags:
+  - data-engineering
+  - data-quality
+  - real-world
+  - openenv
+tasks:
+  - id: task1_missing_values
+    name: "Fill Missing Values"
+    difficulty: easy
+    max_steps: 15
+    description: >
+      A customer dataset has missing ages and income values.
+      The agent must detect which columns have nulls and apply
+      the correct imputation strategy (median for age, mean for income).
+  - id: task2_outliers_dtype
+    name: "Fix Outliers and Data Types"
+    difficulty: medium
+    max_steps: 20
+    description: >
+      A sales dataset contains mixed-type columns (ages stored as strings),
+      salary outliers beyond 3 standard deviations, and negative purchase amounts.
+      The agent must fix dtypes, remove outliers, and filter invalid values.
+  - id: task3_full_pipeline
+    name: "Full Data Cleaning Pipeline"
+    difficulty: hard
+    max_steps: 30
+    description: >
+      A raw CRM export with duplicates, missing fields, outliers, inconsistent
+      city name casing, invalid emails, and wrong dtypes. The agent must apply
+      a complete cleaning pipeline to produce a production-ready dataset.
+observation_space:
+  type: object
+  fields:
+    task_id: string
+    task_description: string
+    step_count: integer
+    dataset:
+      type: object
+      fields:
+        columns: list[string]
+        dtypes: dict[string, string]
+        shape: list[int]
+        data: list[dict]
+        missing_counts: dict[string, int]
+        stats: dict[string, any]
+    action_history: list[dict]
+    reward_so_far: float
+action_space:
+  type: object
+  fields:
+    action_type:
+      type: string
+      enum:
+        - fill_missing
+        - remove_outliers
+        - fix_dtype
+        - drop_duplicates
+        - normalize
+        - filter_rows
+        - standardize_text
+        - submit
+    params:
+      type: dict
+      description: Action-specific parameters (see README for full schema)
+reward:
+  range: [0.0, 1.0]
+  type: float
+  shape: dense
+  description: Partial progress signal after each action, final score on submit
+endpoints:
+  base_url: "http://localhost:7860"
+  reset: "POST /reset"
+  step: "POST /step"
+  state: "GET /state"
+  tasks: "GET /tasks"
+  grader: "POST /grader"
+  baseline: "POST /baseline"
