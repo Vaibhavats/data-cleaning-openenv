@@ -77,7 +77,7 @@ def _apply_action(df: pd.DataFrame, action: Action) -> Tuple[pd.DataFrame, str, 
         before = df[col].isna().sum()
         df[col] = df[col].fillna(fill_val)
         after  = df[col].isna().sum()
-        return df, f"Filled {before - after} nulls in '{col}' with {strategy}={fill_val}.", True
+        return df, f"Filled {before - after} nulls in '{col}' with {strategy}={fill_val:.4g}.", True
 
     elif atype == "remove_outliers":
         col       = params.get("column")
@@ -199,7 +199,7 @@ def _apply_action(df: pd.DataFrame, action: Action) -> Tuple[pd.DataFrame, str, 
         replaced = sum(1 for k in mapping if k in df[col].values or True)
         return df, f"Mapped values in '{col}' using {len(mapping)} rules.", True
 
-    elif atype == "standardize_text":        
+    elif atype == "standardize_text":
         col   = params.get("column")
         case  = params.get("case", "title")
         strip = params.get("strip", True)
