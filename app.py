@@ -18,7 +18,6 @@ import pandas as pd
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 from env import DataCleaningEnvironment, Action
 import env
@@ -55,8 +54,6 @@ _env = DataCleaningEnvironment()
 
 # ── Request models ────────────────────────────────────────────────────────────
 
-class ResetRequest(BaseModel):
-    task_id: str = "task1_missing_values"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
