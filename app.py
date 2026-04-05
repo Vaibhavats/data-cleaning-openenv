@@ -120,7 +120,6 @@ async def reset(request: Request):
 
     obs = _env.reset(task_id=task_id)
     return obs.model_dump()
-@app.post("/reset")
 
 @app.post("/step")
 def step(action: Action):
