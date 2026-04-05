@@ -108,33 +108,19 @@ def health():
 
 from fastapi import Body
 
+from fastapi import Request
+
 @app.post("/reset")
-def reset(req: Optional[ResetRequest] = Body(default=None)):
+async def reset(request: Request):
     try:
-        task_id = req.task_id if req else "task1_missing_values"
-        obs = _env.reset(task_id=task_id)
-        return obs.model_dump()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-# @app.post("/reset")
-# def reset(req: Optional[ResetRequest] = None):
-#     if req is None or req.task_id is None:
-#         task_id = "task1_missing_values"
-#     else:
-#         task_id = req.task_id
+        body = await request.json()
+        task_id = body.get("task_id", "task1_missing_values")
+    except:
+        task_id = "task1_missing_values"
 
-#     return env.reset(task_id)
-# @app.post("/reset")
-# def reset(req: ResetRequest):
-#     """Reset the environment and return the initial observation."""
-#     try:
-#         obs = _env.reset(task_id=req.task_id)
-#         return obs.model_dump()
-#     except ValueError as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=traceback.format_exc())
-
+    obs = _env.reset(task_id=task_id)
+    return obs.model_dump()
+@app.post("/reset")
 
 @app.post("/step")
 def step(action: Action):
