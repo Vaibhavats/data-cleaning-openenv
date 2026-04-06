@@ -43,7 +43,7 @@ def health():
 # ── RESET (FINAL FIXED VERSION) ──────────────────────
 
 @app.post("/reset")
-async def reset(request: Request):
+async def reset(request: Request = None):
     task_id = "task1_missing_values"
 
     try:
