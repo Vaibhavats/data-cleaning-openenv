@@ -2,12 +2,11 @@
 # Hugging Face Spaces compatible Dockerfile (runs as non-root user 1000)
 # Build: docker build -t dataclean-env .
 # Run:   docker run -p 7860:7860 dataclean-env
-
 FROM python:3.11-slim
 
 # HF Spaces requires non-root
 RUN useradd -m -u 1000 appuser
-
+RUN echo "NEW BUILD VERSION 2"
 WORKDIR /app
 
 # Install dependencies first (layer cache)
