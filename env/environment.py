@@ -77,28 +77,49 @@ def _apply_action(df: pd.DataFrame, action: Action) -> Tuple[pd.DataFrame, str, 
         before = df[col].isna().sum()
         df[col] = df[col].fillna(fill_val)
         after  = df[col].isna().sum()
-        return df, f"Filled {before - after} nulls in '{col}' with {strategy}={fill_val:.4g}.", True
+        return df, f"Filled {before - after} nulls in '{col}' with {strategy}={fill_val}.", True
 
+    
     elif atype == "remove_outliers":
         col       = params.get("column")
         method    = params.get("method", "zscore")
         threshold = float(params.get("threshold", 3.0))
+
         if col not in df.columns:
             return df, f"Column '{col}' not found.", False
+
         if not pd.api.types.is_numeric_dtype(df[col]):
             return df, f"Column '{col}' is not numeric.", False
 
         before = len(df)
+        s = df[col].astype(float)
+
         if method == "zscore":
-            z = np.abs((df[col] - df[col].mean()) / df[col].std())
-            df = df[z <= threshold]
+            mean = s.mean()
+            std  = s.std(ddof=0)
+
+            if std == 0:
+                return df, "No variation in data.", False
+
+            z_scores = (s - mean) / std
+
+        # 🔥 REAL FILTERING (this was missing)
+            mask = z_scores.abs() <= threshold
+            df = df.loc[mask]
+            df = df.dropna(subset=[col])
+            df = df[(z_scores >= -threshold) & (z_scores <= threshold)]
+
         elif method == "iqr":
-            Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-            IQR    = Q3 - Q1
-            df     = df[(df[col] >= Q1 - threshold * IQR) & (df[col] <= Q3 + threshold * IQR)]
+            Q1 = s.quantile(0.25)
+            Q3 = s.quantile(0.75)
+            IQR = Q3 - Q1
+
+            lower = Q1 - threshold * IQR
+            upper = Q3 + threshold * IQR
+            df = df[(s >= lower) & (s <= upper)]
+
         else:
             return df, f"Unknown method '{method}'.", False
-
         removed = before - len(df)
         return df.reset_index(drop=True), f"Removed {removed} outlier rows from '{col}'.", True
 
@@ -196,7 +217,7 @@ def _apply_action(df: pd.DataFrame, action: Action) -> Tuple[pd.DataFrame, str, 
         before_unique = df[col].nunique()
         df[col] = df[col].replace(mapping)
         after_unique = df[col].nunique()
-        replaced = sum(1 for k in mapping if k in df[col].values or True)
+        replaced = sum(1 for k in mapping if k in df[col].values)
         return df, f"Mapped values in '{col}' using {len(mapping)} rules.", True
 
     elif atype == "standardize_text":
@@ -216,7 +237,21 @@ def _apply_action(df: pd.DataFrame, action: Action) -> Tuple[pd.DataFrame, str, 
             s = s.str.title()
         df[col] = s
         return df, f"Standardised text in '{col}' (case={case}, strip={strip}).", True
+    elif atype == "validate_email":
+        col = params.get("column")
 
+        if col not in df.columns:
+            return df, f"Column '{col}' not found.", False
+
+        import re
+        pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+
+        before = len(df)
+        df = df[df[col].astype(str).str.match(pattern, na=False)]
+
+        removed = before - len(df)
+        return df.reset_index(drop=True), f"Removed {removed} invalid emails.", True
+    
     elif atype == "submit":
         return df, "Episode submitted for grading.", True
 
@@ -284,8 +319,8 @@ class DataCleaningEnvironment:
         # Compute step reward
         step_r, r_msg = self._task_module.step_reward(prev_df, self._df)
         if not valid:
-            step_r = -0.02
-        self._reward_accum = round(min(1.0, self._reward_accum + step_r), 4)
+            step_r = 0.0
+        self._reward_accum += step_r
 
         self._history.append({
             "step":   self._step_count,

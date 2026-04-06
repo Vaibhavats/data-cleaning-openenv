@@ -17,6 +17,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 import requests
+from env.models import Action
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -31,77 +32,162 @@ TASK_IDS = ["task1_missing_values", "task2_outliers_dtype", "task3_full_pipeline
 # ── Rule-based strategy per task ─────────────────────────────────────────────
 
 def _rule_actions_task1(obs: Dict) -> List[Dict]:
-    """Fill missing age with median, income with mean, then submit."""
+    """Fill missing values safely and robustly."""
     dataset = obs["dataset"]
     missing = dataset["missing_counts"]
+    dtypes  = dataset["dtypes"]
+
     actions = []
+
+    # 1. Ensure numeric dtype (important safety)
+    if dtypes.get("age") not in ("int64", "float64", "Int64"):
+        actions.append({
+            "action_type": "fix_dtype",
+            "params": {"column": "age", "target_type": "float"}
+        })
+
+    if dtypes.get("annual_income") not in ("int64", "float64"):
+        actions.append({
+            "action_type": "fix_dtype",
+            "params": {"column": "annual_income", "target_type": "float"}
+        })
+
+    # 2. Fill missing values
     if missing.get("age", 0) > 0:
-        actions.append({"action_type": "fill_missing", "params": {"column": "age", "strategy": "median"}})
+        actions.append({
+            "action_type": "fill_missing",
+            "params": {"column": "age", "strategy": "median"}
+        })
+
     if missing.get("annual_income", 0) > 0:
-        actions.append({"action_type": "fill_missing", "params": {"column": "annual_income", "strategy": "mean"}})
-    actions.append({"action_type": "submit", "params": {}})
+        actions.append({
+            "action_type": "fill_missing",
+            "params": {"column": "annual_income", "strategy": "mean"}
+        })
+
+    # 3. Submit
+    actions.append({
+        "action_type": "submit",
+        "params": {}
+    })
+
     return actions
 
 
 def _rule_actions_task2(obs: Dict) -> List[Dict]:
-    """Fix age dtype, remove salary outliers, filter negative purchases, submit."""
     actions = []
     dtypes  = obs["dataset"]["dtypes"]
-    # Fix dtype if age is object
+
+    # 1. Fix age dtype
     if dtypes.get("age") not in ("int64", "float64", "Int64"):
-        actions.append({"action_type": "fix_dtype", "params": {"column": "age", "target_type": "int"}})
-    # Remove salary outliers (zscore > 3)
-    actions.append({"action_type": "remove_outliers",
-                    "params": {"column": "salary", "method": "zscore", "threshold": 3.0}})
-    # Filter negative purchase amounts
-    actions.append({"action_type": "filter_rows",
-                    "params": {"column": "purchase_amount", "operator": "gte", "value": 0}})
-    actions.append({"action_type": "submit", "params": {}})
+        actions.append({
+            "action_type": "fix_dtype",
+            "params": {"column": "age", "target_type": "int"}
+        })
+
+    # 🔥 2. Remove negative values FIRST
+    
+
+    # 🔥 3. Then remove outliers
+    actions.append({
+        "action_type": "remove_outliers",
+        "params": {
+            "column": "salary",
+            "method": "iqr",
+            "threshold": 1.5
+        }
+    })
+    actions.append({
+        "action_type": "filter_rows",
+        "params": {
+            "column": "purchase_amount",
+            "operator": "gte",
+            "value": 0
+        }
+    })
+    # actions.append({
+    #     "action_type": "remove_outliers",
+    #     "params": {
+    #         "column": "salary",
+    #         "method": "zscore",
+    #         "threshold": 3.0
+    #     }
+    # })
+    
+
+    # 4. Submit
+    actions.append({
+        "action_type": "submit",
+        "params": {}
+    })
+
     return actions
 
-
 def _rule_actions_task3(obs: Dict) -> List[Dict]:
-    """Full pipeline: dedup, fill nulls, fix age outliers, standardise city, fix emails, fix dtype."""
     actions = []
     missing = obs["dataset"]["missing_counts"]
     dtypes  = obs["dataset"]["dtypes"]
 
-    # 1. Drop exact duplicates
+    # 1. Drop duplicates
     actions.append({"action_type": "drop_duplicates", "params": {}})
-    # 2. Drop near-dups on customer_id
     actions.append({"action_type": "drop_duplicates", "params": {"subset": ["customer_id"]}})
-    # 3. Fill missing age
+
+    # 2. Fill missing age
     if missing.get("age", 0) > 0:
-        actions.append({"action_type": "fill_missing",
-                        "params": {"column": "age", "strategy": "median"}})
-    # 4. Fill missing signup_date
-    if missing.get("signup_date", 0) > 0:
-        actions.append({"action_type": "fill_missing",
-                        "params": {"column": "signup_date", "strategy": "mode"}})
-    # 5. Remove age outliers (< 10 or > 100)
-    actions.append({"action_type": "filter_rows",
-                    "params": {"column": "age", "operator": "gte", "value": 10}})
-    actions.append({"action_type": "filter_rows",
-                    "params": {"column": "age", "operator": "lte", "value": 100}})
-    # 6. Map non-canonical city variants explicitly
-    actions.append({"action_type": "map_values", "params": {"column": "city", "mapping": {
-        "new york": "New York", "NEW YORK": "New York", "newyork": "New York",
-        "los angeles": "Los Angeles", "LOS ANGELES": "Los Angeles", "LA": "Los Angeles",
-        "chicago": "Chicago", "CHICAGO": "Chicago",
-        "houston": "Houston", "HOUSTON": "Houston",
-        "phoenix": "Phoenix", "PHOENIX": "Phoenix",
-    }}})
-    # 7. Standardise remaining city casing
-    actions.append({"action_type": "standardize_text",
-                    "params": {"column": "city", "case": "title", "strip": True}})
-    # 8. Remove invalid emails (filter rows that don't contain '@' AND '.')
-    actions.append({"action_type": "filter_rows",
-                    "params": {"column": "email", "operator": "contains", "value": "@"}})
-    # 9. Fix purchase_amount dtype (strip '$' and convert)
+        actions.append({
+            "action_type": "fill_missing",
+            "params": {"column": "age", "strategy": "median"}
+        })
+
+    # 3. Remove invalid ages
+    actions.append({
+        "action_type": "filter_rows",
+        "params": {"column": "age", "operator": "gte", "value": 10}
+    })
+    actions.append({
+        "action_type": "filter_rows",
+        "params": {"column": "age", "operator": "lte", "value": 100}
+    })
+
+    # 4. Fix city values
+    actions.append({
+        "action_type": "map_values",
+        "params": {
+            "column": "city",
+            "mapping": {
+                "new york": "New York", "NEW YORK": "New York", "newyork": "New York",
+                "los angeles": "Los Angeles", "LOS ANGELES": "Los Angeles", "LA": "Los Angeles",
+                "chicago": "Chicago", "CHICAGO": "Chicago",
+                "houston": "Houston", "HOUSTON": "Houston",
+                "phoenix": "Phoenix", "PHOENIX": "Phoenix",
+            }
+        }
+    })
+
+    actions.append({
+        "action_type": "standardize_text",
+        "params": {"column": "city", "case": "title", "strip": True}
+    })
+
+    # 5. Email validation (YOUR ADDITION 🔥)
+    actions.append({
+        "action_type": "validate_email",
+        "params": {"column": "email"}
+    })
+
+    # 6. Fix purchase_amount dtype
     if dtypes.get("purchase_amount") not in ("float64", "int64"):
-        actions.append({"action_type": "fix_dtype",
-                        "params": {"column": "purchase_amount", "target_type": "strip_and_float"}})
+        actions.append({
+            "action_type": "fix_dtype",
+            "params": {
+                "column": "purchase_amount",
+                "target_type": "strip_and_float"
+            }
+        })
+
+    # 7. Submit
     actions.append({"action_type": "submit", "params": {}})
+
     return actions
 
 

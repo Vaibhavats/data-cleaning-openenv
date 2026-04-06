@@ -52,6 +52,7 @@ class Action(BaseModel):
         "filter_rows",
         "standardize_text",
         "map_values",
+        "validate_email",
         "submit",
     ] = Field(description="Cleaning operation to apply")
     params: Dict[str, Any] = Field(

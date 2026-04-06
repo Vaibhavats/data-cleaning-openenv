@@ -42,9 +42,20 @@ def health():
 
 # ── RESET (FINAL FIXED VERSION) ──────────────────────
 
-@app.api_route("/reset", methods=["POST"])
-def reset():
-    task_id = DEFAULT_TASK
+@app.post("/reset")
+async def reset(request: Request):
+    task_id = "task1_missing_values"
+
+    try:
+        body_bytes = await request.body()
+
+        if body_bytes:
+            body = json.loads(body_bytes)
+            task_id = body.get("task_id", task_id)
+
+    except:
+        pass
+
     obs = _env.reset(task_id=task_id)
     return obs.model_dump()
 
@@ -54,8 +65,9 @@ def reset():
 async def step(request: Request):
     try:
         body = await request.body()
+
         if not body:
-            raise HTTPException(status_code=400, detail="Body required")
+            raise HTTPException(status_code=400, detail="Action body required")
 
         data = json.loads(body)
         action = Action(**data)
@@ -67,7 +79,6 @@ async def step(request: Request):
         raise
     except Exception:
         raise HTTPException(status_code=500, detail=traceback.format_exc())
-
 # ── STATE ────────────────────────────────────────────
 
 @app.get("/state")
@@ -87,7 +98,7 @@ def tasks():
             difficulty=meta["difficulty"],
             description=meta["description"],
             max_steps=meta["max_steps"],
-            action_schema={}
+            action_schema=Action.model_json_schema()
         ))
     return TaskListResponse(tasks=task_list).model_dump()
 
@@ -122,21 +133,25 @@ async def grader(request: Request):
 
 @app.post("/baseline")
 def baseline():
-    from baseline import run_baseline_task
+    try:
+        from baseline import run_baseline_task
 
-    results: List[BaselineTaskResult] = []
+        results: List[BaselineTaskResult] = []
 
-    for task_id in TASK_REGISTRY:
-        r = run_baseline_task(task_id)
-        results.append(BaselineTaskResult(**r))
+        for task_id in TASK_REGISTRY:
+            r = run_baseline_task(task_id)
+            results.append(BaselineTaskResult(**r))
 
-    mean_score = round(sum(r.score for r in results) / len(results), 4)
+        mean_score = round(sum(r.score for r in results) / len(results), 4)
 
-    return BaselineResponse(
-        model="rule-based",
-        results=results,
-        mean_score=mean_score,
-    ).model_dump()
+        return BaselineResponse(
+            model="rule-based",
+            results=results,
+            mean_score=mean_score,
+        ).model_dump()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ── RUN ──────────────────────────────────────────────
 
