@@ -6,7 +6,7 @@ FROM python:3.11-slim
 
 # HF Spaces requires non-root
 RUN useradd -m -u 1000 appuser
-RUN echo "NEW BUILD VERSION 2"
+RUN echo "FORCE REBUILD V7"
 WORKDIR /app
 
 # Install dependencies first (layer cache)
