@@ -1,5 +1,5 @@
-from env.tasks import TASK_REGISTRY
-from __future__ import annotations
+from __future__ import annotations  
+
 import sys
 import os
 
@@ -18,7 +18,7 @@ from env.models import (
     BaselineTaskResult, BaselineResponse,
     StepResult,
 )
-
+from env.tasks import TASK_REGISTRY  
 # ── App setup ─────────────────────────────────────────
 
 app = FastAPI(
