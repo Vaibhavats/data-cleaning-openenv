@@ -1,22 +1,55 @@
-from baseline import run_baseline_task
-from env.tasks import TASK_REGISTRY
+import requests
 
-def main():
-    results = []
+BASE_URL = "https://vaibhavats-data-cleaning-openenv.hf.space"
 
-    for task_id in TASK_REGISTRY:
-        result = run_baseline_task(task_id)
-        results.append(result)
+TASKS = [
+    "task1_missing_values",
+    "task2_outliers_dtype",
+    "task3_full_pipeline"
+]
 
-    mean_score = sum(r["score"] for r in results) / len(results)
+for task in TASKS:
 
-    print("Model: rule-based")
-    print("Results:")
-    for r in results:
-        print(r)
+    # START
+    print(f"[START] task={task}", flush=True)
 
-    print("Mean Score:", round(mean_score, 4))
+    # RESET
+    res = requests.post(f"{BASE_URL}/reset", json={"task_id": task})
+    obs = res.json()
 
+    step_count = 0
 
-if __name__ == "__main__":
-    main()
+    # VERY SIMPLE LOOP (baseline style)
+    for i in range(3):
+        step_count += 1
+
+        action = {
+            "action": "noop"
+        }
+
+        step_res = requests.post(f"{BASE_URL}/step", json=action)
+        result = step_res.json()
+
+        reward = result.get("reward", 0)
+
+        print(f"[STEP] step={step_count} reward={reward}", flush=True)
+
+        if result.get("done"):
+            break
+
+    # GET FINAL STATE
+    state = requests.get(f"{BASE_URL}/state").json()
+
+    # GRADER
+    grade = requests.post(
+        f"{BASE_URL}/grader",
+        json={
+            "task_id": task,
+            "final_data": state["data"]
+        }
+    ).json()
+
+    score = grade.get("score", 0)
+
+    # END
+    print(f"[END] task={task} score={score} steps={step_count}", flush=True)
