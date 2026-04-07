@@ -149,6 +149,13 @@ def baseline():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+def main():
+    import uvicorn
+    import os
+
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
 
 # ── RUN ──────────────────────────────────────────────
 
