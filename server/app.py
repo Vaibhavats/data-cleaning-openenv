@@ -1,10 +1,16 @@
+from env.tasks import TASK_REGISTRY
 from __future__ import annotations
-import os, json, traceback
-from typing import List
+import sys
+import os
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+import json, traceback
+from typing import List
 import pandas as pd
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+
 from env import DataCleaningEnvironment, Action
 from env.models import (
     GraderRequest, GraderResponse,
@@ -12,7 +18,6 @@ from env.models import (
     BaselineTaskResult, BaselineResponse,
     StepResult,
 )
-from env.tasks import TASK_REGISTRY
 
 # ── App setup ─────────────────────────────────────────
 
