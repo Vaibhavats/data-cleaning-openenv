@@ -45,10 +45,9 @@ for task in TASKS:
         f"{BASE_URL}/grader",
         json={
             "task_id": task,
-            "final_data": state["data"]
+            "final_data": state.get("data") or state.get("dataset") or []
         }
     ).json()
-
     score = grade.get("score", 0)
 
     # END
