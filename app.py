@@ -43,8 +43,16 @@ def health():
 # ── RESET (FINAL FIXED VERSION) ──────────────────────
 
 @app.post("/reset")
-def reset(body: dict = {}):
-    task_id = body.get("task_id", "task1_missing_values")
+async def reset(request: Request):
+    task_id = "task1_missing_values"
+
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            task_id = body.get("task_id", task_id)
+    except:
+        pass
+
     obs = _env.reset(task_id=task_id)
     return obs.model_dump()
 
