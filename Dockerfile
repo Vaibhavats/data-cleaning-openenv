@@ -6,7 +6,7 @@ FROM python:3.11-slim
 
 # HF Spaces requires non-root
 RUN useradd -m -u 1000 appuser
-RUN echo "FORCE REBUILD V7"
+RUN echo "REBUILD_V8_FORCE"
 WORKDIR /app
 
 # Install dependencies first (layer cache)
@@ -28,4 +28,4 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD python -c "import requests; r=requests.get('http://localhost:7860/health',timeout=5); r.raise_for_status()"
 
-CMD ["python", "app.py"]
+CMD ["python", "server/app.py"]
