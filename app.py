@@ -45,11 +45,7 @@ def health():
 from fastapi import Body
 
 @app.post("/reset")
-async def reset(body: dict = Body(None)):
-    if body is None:
-        body = {}
-    task_id = body.get("task_id", "task1_missing_values")
-
+def reset(task_id: str = "task1_missing_values"):
     obs = _env.reset(task_id=task_id)
     return obs.model_dump()
 
