@@ -1,7 +1,3 @@
-# 🧹 Customer Data Cleaning — OpenEnv
-
-> An RL environment where AI agents learn to clean messy real-world customer datasets.  
-> Built to the **OpenEnv** specification with 3 graded tasks (easy → hard), dense rewards, and a reproducible baseline.
 ---
 title: Data Cleaning OpenEnv
 emoji: 🚀
@@ -11,6 +7,12 @@ sdk: docker
 app_file: app.py
 pinned: false
 ---
+
+# 🧹 Customer Data Cleaning — OpenEnv
+
+> An RL environment where AI agents learn to clean messy real-world customer datasets.  
+> Built to the **OpenEnv** specification with 3 graded tasks (easy → hard), dense rewards, and a reproducible baseline.
+
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-1.0-blue)](https://openenv.dev)
 [![HF Space](https://img.shields.io/badge/🤗-Hugging%20Face%20Space-yellow)](https://huggingface.co/spaces/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-green)](https://python.org)
