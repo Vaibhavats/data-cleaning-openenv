@@ -16,12 +16,15 @@ TASKS = [
 ]
 
 # ✅ MAKE LLM CALL ONCE (guaranteed)
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": "Return OK"}]
-)
+try:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Return OK"}]
+    )
+    print("LLM RESPONSE:", response.choices[0].message.content, flush=True)
 
-print("LLM RESPONSE:", response.choices[0].message.content, flush=True)
+except Exception as e:
+    print("LLM call failed, continuing...", str(e), flush=True)
 
 
 for task in TASKS:
