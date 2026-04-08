@@ -65,8 +65,12 @@ for task in TASKS:
             "final_data": final_data
         }
     ).json()
-
     score = grade.get("score", 0)
+
+    if score <= 0:
+        score = 0.01
+    elif score >= 1:
+        score = 0.99
 
     # END
     print(f"[END] task={task} score={score} steps={step_count}", flush=True)
