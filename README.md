@@ -10,18 +10,18 @@ pinned: false
 
 # 🧹 Customer Data Cleaning — OpenEnv
 
-> An RL environment where AI agents learn to clean messy real-world customer datasets.  
+> An RL environment where AI agents learn to clean messy real-world customer datasets.
 > Built to the **OpenEnv** specification with 3 graded tasks (easy → hard), dense rewards, and a reproducible baseline.
 
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-1.0-blue)](https://openenv.dev)
-[![HF Space](https://img.shields.io/badge/🤗-Hugging%20Face%20Space-yellow)](https://huggingface.co/spaces/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-green)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey)](#-license)
 
 ---
 
 ## 🎯 Why This Environment?
 
-Data cleaning is one of the most time-consuming tasks in data engineering and analytics — studies consistently show it consumes 60–80 % of a data professional's time. Every production ML pipeline begins with it. Yet no existing OpenEnv benchmark targets this domain.
+Data cleaning is one of the most time-consuming tasks in data engineering and analytics — studies consistently show it consumes 60–80% of a data professional's time. Every production ML pipeline begins with it. Yet no existing OpenEnv benchmark targets this domain.
 
 This environment teaches agents to:
 - **detect** data quality issues (nulls, outliers, type errors, duplicates, format inconsistencies)
@@ -35,22 +35,27 @@ Agents that score well here transfer directly to real ETL and data-prep workflow
 ## 🗂️ Project Structure
 
 ```
-dataclean-env/
+data-cleaning-openenv/
 ├── app.py                        # FastAPI server (all endpoints)
 ├── baseline.py                   # Baseline inference script (rule-based + LLM)
+├── inference.py                  # Standalone inference entrypoint
 ├── openenv.yaml                  # OpenEnv metadata
+├── pyproject.toml / uv.lock      # Dependency management (uv)
 ├── Dockerfile                    # Container definition
 ├── requirements.txt
 ├── README.md
-└── env/
-    ├── __init__.py
-    ├── models.py                 # Typed Pydantic models (Observation, Action, Reward…)
-    ├── environment.py            # DataCleaningEnvironment: reset/step/state
-    └── tasks/
-        ├── __init__.py
-        ├── task1_missing_values.py    # Easy task
-        ├── task2_outliers_dtype.py    # Medium task
-        └── task3_full_pipeline.py     # Hard task
+├── SPACES_README.md              # Hugging Face Spaces-specific readme
+├── env/
+│   ├── __init__.py
+│   ├── models.py                 # Typed Pydantic models (Observation, Action, Reward…)
+│   ├── environment.py            # DataCleaningEnvironment: reset/step/state
+│   └── tasks/
+│       ├── __init__.py
+│       ├── task1_missing_values.py    # Easy task
+│       ├── task2_outliers_dtype.py    # Medium task
+│       └── task3_full_pipeline.py     # Hard task
+├── server/                       # Server-side FastAPI implementation
+└── tests/                        # Test suite
 ```
 
 ---
@@ -109,11 +114,12 @@ All actions are JSON objects with `action_type` and `params`:
 **Max steps:** 15
 
 **Grader dimensions (weights):**
+
 | Dimension | Weight | Criterion |
 |---|---|---|
-| Completeness | 40 % | All nulls filled |
-| Accuracy | 40 % | Correct imputation values used |
-| Preservation | 20 % | All 40 rows retained |
+| Completeness | 40% | All nulls filled |
+| Accuracy | 40% | Correct imputation values used |
+| Preservation | 20% | All 40 rows retained |
 
 **Expected baseline score:** ~0.97
 
@@ -131,12 +137,13 @@ All actions are JSON objects with `action_type` and `params`:
 **Max steps:** 20
 
 **Grader dimensions (weights):**
+
 | Dimension | Weight | Criterion |
 |---|---|---|
-| dtype_fix | 25 % | `age` is numeric dtype |
-| outlier_removal | 35 % | F1 score on known outlier rows |
-| negative_purchase | 25 % | No negative purchase_amount |
-| preservation | 15 % | ≥ 51 valid rows kept |
+| dtype_fix | 25% | `age` is numeric dtype |
+| outlier_removal | 35% | F1 score on known outlier rows |
+| negative_purchase | 25% | No negative purchase_amount |
+| preservation | 15% | ≥ 51 valid rows kept |
 
 **Expected baseline score:** ~0.85
 
@@ -159,14 +166,15 @@ All actions are JSON objects with `action_type` and `params`:
 **Max steps:** 30
 
 **Grader dimensions (weights):**
+
 | Dimension | Weight | Criterion |
 |---|---|---|
-| deduplication | 20 % | Exact + customer_id dups removed |
-| missing_filled | 15 % | age + signup_date nulls filled |
-| age_validity | 15 % | No ages < 10 or > 100 |
-| city_standard | 15 % | All cities in canonical Title Case set |
-| email_validity | 20 % | No invalid email rows remain |
-| dtype_purchase | 15 % | `purchase_amount` is float64 |
+| deduplication | 20% | Exact + customer_id dups removed |
+| missing_filled | 15% | age + signup_date nulls filled |
+| age_validity | 15% | No ages < 10 or > 100 |
+| city_standard | 15% | All cities in canonical Title Case set |
+| email_validity | 20% | No invalid email rows remain |
+| dtype_purchase | 15% | `purchase_amount` is float64 |
 
 **Expected baseline score:** ~0.72
 
@@ -199,14 +207,16 @@ This design means:
 
 ```bash
 git clone https://github.com/Vaibhavats/data-cleaning-openenv
-cd dataclean-env
-docker build -t dataclean-env .
-docker run -p 7860:7860 dataclean-env
+cd data-cleaning-openenv
+docker build -t data-cleaning-openenv .
+docker run -p 7860:7860 data-cleaning-openenv
 ```
 
 ### Option 2: Local Python
 
 ```bash
+git clone https://github.com/Vaibhavats/data-cleaning-openenv
+cd data-cleaning-openenv
 pip install -r requirements.txt
 python app.py
 ```
@@ -280,7 +290,7 @@ Measured with the deterministic rule-based agent (`python baseline.py`):
 
 A naïve single-pass z-score computed on the **full** dataset (including the 5 extreme outliers) raises the mean and std, making only 2 of the 5 outliers cross the 3σ threshold. An optimal agent must either:
 - Apply z-score **iteratively** until no new outliers are found
-- Use **IQR** method which is more robust to extreme values  
+- Use **IQR** method which is more robust to extreme values
 - Apply a direct `filter_rows` action with an empirically chosen threshold
 
 This creates a meaningful gap between the baseline and an optimal policy — exactly the kind of signal needed to train and evaluate agents.
