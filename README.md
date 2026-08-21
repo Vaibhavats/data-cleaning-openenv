@@ -198,7 +198,7 @@ This design means:
 ### Option 1: Docker (recommended)
 
 ```bash
-git clone https://github.com/<your-handle>/dataclean-env
+git clone https://github.com/Vaibhavats/data-cleaning-openenv
 cd dataclean-env
 docker build -t dataclean-env .
 docker run -p 7860:7860 dataclean-env
