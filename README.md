@@ -94,6 +94,8 @@ All actions are JSON objects with `action_type` and `params`:
 | `normalize` | `column`, `method` (minmax/zscore) | Normalise numeric column |
 | `filter_rows` | `column`, `operator` (gt/lt/gte/lte/eq/ne/contains/not_contains), `value` | Keep matching rows |
 | `standardize_text` | `column`, `case` (lower/upper/title), `strip` (bool) | Normalise string case |
+| `map_values` | `column`, `mapping` (dict of value replacements) | Normalise inconsistent categorical values (e.g. city name variants) |
+| `validate_email` | `column` | Flag or drop rows with invalid email formats |
 | `submit` | *(empty)* | End episode, trigger final grader |
 
 **Example action:**
@@ -121,7 +123,7 @@ All actions are JSON objects with `action_type` and `params`:
 | Accuracy | 40% | Correct imputation values used |
 | Preservation | 20% | All 40 rows retained |
 
-**Expected baseline score:** ~0.97
+**Expected baseline score:** ~1.00
 
 ---
 
@@ -145,7 +147,7 @@ All actions are JSON objects with `action_type` and `params`:
 | negative_purchase | 25% | No negative purchase_amount |
 | preservation | 15% | ≥ 51 valid rows kept |
 
-**Expected baseline score:** ~0.85
+**Expected baseline score:** ~0.83
 
 ---
 
@@ -176,7 +178,7 @@ All actions are JSON objects with `action_type` and `params`:
 | email_validity | 20% | No invalid email rows remain |
 | dtype_purchase | 15% | `purchase_amount` is float64 |
 
-**Expected baseline score:** ~0.72
+**Expected baseline score:** ~0.94
 
 ---
 
@@ -225,7 +227,7 @@ python app.py
 
 ```bash
 # Rule-based (no API key needed)
-python baseline.py
+python baseline.py --task task1_missing_values --verbose
 
 # LLM agent
 OPENAI_API_KEY=sk-... python baseline.py --llm --verbose
@@ -275,25 +277,29 @@ print("Breakdown:", result["info"]["breakdown"])
 
 ## 📊 Baseline Scores
 
-Measured with the deterministic rule-based agent (`python baseline.py`):
+Measured with the deterministic rule-based agent (`python baseline.py --task <task_id> --verbose`):
 
 | Task | Difficulty | Score | Steps | Notes |
 |---|---|---|---|---|
 | task1_missing_values | Easy | **1.00** | 3 | Perfect — median/mean imputation correct |
-| task2_outliers_dtype | Medium | **0.79** | 4 | Single-pass z-score catches 2/5 outliers; iterative or IQR gets higher |
-| task3_full_pipeline | Hard | **0.85** | 10 | Requires all 8 cleaning steps in correct order |
-| **Mean** | | **0.88** | | |
+| task2_outliers_dtype | Medium | **0.83** | 4 | Single-pass z-score under-detects outliers (outlier_removal sub-score ~0.53); dtype fix, negative-purchase filtering, and row preservation all perfect |
+| task3_full_pipeline | Hard | **0.94** | 10 | Dedup, filtering, value mapping, text standardization, email validation, and dtype fixes applied in sequence; missing_filled sub-score (~0.6) is the main gap |
+| **Mean** | | **0.92** | | |
 
 *Scores are fully reproducible — fixed random seeds (`np.random.seed(42/7/99)`) in all dataset generators.*
 
 ### Why Task 2 isn't 1.0 for the rule-based baseline
 
-A naïve single-pass z-score computed on the **full** dataset (including the 5 extreme outliers) raises the mean and std, making only 2 of the 5 outliers cross the 3σ threshold. An optimal agent must either:
+A naïve single-pass z-score computed on the **full** dataset (including the extreme outliers) raises the mean and std, which weakens detection of the true outliers and holds the `outlier_removal` sub-score to roughly 0.53. An optimal agent must either:
 - Apply z-score **iteratively** until no new outliers are found
 - Use **IQR** method which is more robust to extreme values
 - Apply a direct `filter_rows` action with an empirically chosen threshold
 
 This creates a meaningful gap between the baseline and an optimal policy — exactly the kind of signal needed to train and evaluate agents.
+
+### Why Task 3 isn't 1.0 for the rule-based baseline
+
+The full pipeline baseline scores well (0.94) but doesn't fully close the `missing_filled` dimension (~0.6) — some missing `age`/`signup_date` values aren't imputed as completely as an optimal policy would. This leaves room for a smarter agent to close the remaining gap.
 
 ---
 
@@ -302,7 +308,7 @@ This creates a meaningful gap between the baseline and an optimal policy — exa
 1. **Always inspect `dataset.missing_counts` and `dataset.dtypes` first** — they surface the most obvious issues.
 2. **Read `action_history`** — past rewards tell you what worked.
 3. **Don't over-clean** — row-deletion penalties accumulate; only remove rows with confirmed issues.
-4. **Order matters for Task 3**: dedup → fill nulls → filter invalids → fix dtypes → submit.
+4. **Order matters for Task 3**: dedup → fill nulls → filter invalids → map/standardize values → validate emails → fix dtypes → submit.
 5. **`submit` early if stuck** — a partial score is better than hitting max_steps with no submit (which also triggers grading).
 
 ---
